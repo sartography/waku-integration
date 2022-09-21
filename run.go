@@ -121,7 +121,7 @@ func main() {
 		Text:        "abc123",
 		ChatId:      "testing-adamb",
 		ContentType: protobuf.ChatMessage_TEXT_PLAIN,
-		MessageType: protobuf.MessageType_PUBLIC_GROUP,
+		MessageType: protobuf.MessageType_PRIVATE_GROUP,
 		Clock:       154593077368201,
 		Timestamp:   1545930773682,
 	}
@@ -142,6 +142,9 @@ func main() {
 		panic(err)
 	}
 	fmt.Printf("wrappedPayload: '%v'\n", wrappedPayload)
+
+	hexEncoded := hex.EncodeToString(wrappedPayload)
+	fmt.Printf("hexEncoded: '%v'\n", hexEncoded)
 }
 
 // ToTopic converts a string to a whisper topic.
