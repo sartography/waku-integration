@@ -107,25 +107,27 @@ var (
 )
 
 func main() {
-	publicKeyString := "04aa379d2661d6358f41b47a866f2674ca987e3398e93318ec08ea58b9f7035df491131a62ad3a469af609df9af58bcad698dac7f01e160130b7e187c60b824973"
-	// publicKeyString := "04622248490465b1d0cd5ec48375484682bec9a16f550ffd461cb803d4a8970a88cf8f99390a8e2216012602a9f8a0882ae86d773667d2802939150f3a14f1963a"
+	jasonKey := "04aa379d2661d6358f41b47a866f2674ca987e3398e93318ec08ea58b9f7035df491131a62ad3a469af609df9af58bcad698dac7f01e160130b7e187c60b824973"
+	// kbKey := "04e3ec4eb8a7c6b78f30b25ee2b2c34040ede4b9e51627ac82051bb37c4c3de21da0709bced20619566c545ff7b69fd58b8840cd48a686fffe68608f879bf9155b"
+	// mikeKey := "04622248490465b1d0cd5ec48375484682bec9a16f550ffd461cb803d4a8970a88cf8f99390a8e2216012602a9f8a0882ae86d773667d2802939150f3a14f1963a"
+	publicKeyString := jasonKey
 	publicKey, err := StrToPublicKey(publicKeyString)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("PUKEY: '%v'\n", publicKey.X)
+	// fmt.Printf("PUKEY: '%v'\n", publicKey.X)
 	partitionTopic := PartitionedTopic(publicKey)
-	fmt.Printf("PAR TOPIC: '%v'\n", partitionTopic)
+	// fmt.Printf("PAR TOPIC: '%v'\n", partitionTopic)
 
 	testMessage := protobuf.ChatMessage{
 		Text:        "abc123",
-		ChatId:      "testing-adamb",
+		ChatId:      fmt.Sprintf("0x%v", publicKeyString),
 		ContentType: protobuf.ChatMessage_TEXT_PLAIN,
-		MessageType: protobuf.MessageType_PRIVATE_GROUP,
+		MessageType: protobuf.MessageType_ONE_TO_ONE,
 		Clock:       154593077368201,
 		Timestamp:   1545930773682,
 	}
-	fmt.Printf("testMessage: '%v'\n", testMessage)
+	// fmt.Printf("testMessage: '%v'\n", testMessage)
 
 	encodedPayload, err := proto.Marshal(&testMessage)
 	if err != nil {
@@ -141,10 +143,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("wrappedPayload: '%v'\n", wrappedPayload)
+	// fmt.Printf("wrappedPayload: '%v'\n", wrappedPayload)
 
 	hexEncoded := hex.EncodeToString(wrappedPayload)
-	fmt.Printf("hexEncoded: '%v'\n", hexEncoded)
+	// fmt.Printf("hexEncoded: '%v'\n", hexEncoded)
+	fmt.Printf("%v:%v", partitionTopic, hexEncoded)
 }
 
 // ToTopic converts a string to a whisper topic.

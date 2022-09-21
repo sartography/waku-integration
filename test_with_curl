@@ -8,14 +8,15 @@ trap 'error_handler ${LINENO} $?' ERR
 set -o errtrace -o errexit -o nounset -o pipefail
 
 function send_curl() {
-  payload=$1
+  local partition_topic=$1
+  local payload=$2
   curl -v -f -s -X POST -H Content-type:application/json --data '{
     "id": 1,
     "jsonrpc": "2.0",
     "method": "post_waku_v2_relay_v1_message",
     "params": ["", {
         "payload": "'$payload'",
-        "contentTopic": "contact-discovery-1492",
+        "contentTopic": "'$partition_topic'",
         "version": 1
     }]
     }' http://localhost:8545
@@ -30,8 +31,8 @@ function send_curl() {
   #   }' http://localhost:8545/waku/v2/relay/v1/message
 }
 
-# send_curl "abcdef112233"
-
-# payload_string='0a41e2b8d67650ba6c5cd5f76448719f85f2ddc86109ae622458a278acb8fcba85561dc74b8f37228924abee94a6d826ff3fda6020fcde4bcf76166c682fab8fb07101122a0889abd88ba0932310b2a99e85ff2c1a06616263313233320d74657374696e672d6164616d62380240011801'
-payload_string='0a41f3788c52a014a68f53e1bc0582c20fe3eef22f1b58677c8d1df9efe97772e0d52ffe20f06e29aea7a75d312fb8838d815a76509b09b6f722b59d16067e75db8000122a0889abd88ba0932310b2a99e85ff2c1a06616263313233320d74657374696e672d6164616d62380340011801'
-send_curl "$payload_string"
+go build waku/client
+content=$(./client)
+partition_topic=$(awk -F ':' '{print $1}' <<<"$content")
+payload_string=$(awk -F ':' '{print $2}' <<<"$content")
+send_curl "$partition_topic" "$payload_string"
