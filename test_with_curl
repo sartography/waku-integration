@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+function error_handler() {
+  >&2 echo "Exited with BAD EXIT CODE '${2}' in ${0} script at line: ${1}."
+  exit "$2"
+}
+trap 'error_handler ${LINENO} $?' ERR
+set -o errtrace -o errexit -o nounset -o pipefail
+
+function send_curl() {
+  payload=$1
+  curl -v -f -s -X POST -H Content-type:application/json --data '{
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "post_waku_v2_relay_v1_message",
+    "params": ["", {
+        "payload": "'$payload'",
+        "contentTopic": "contentTopicGoesHere",
+        "timestamp": 1257894000000000000,
+        "version": 1
+    }]
+    }' http://localhost:8545
+}
+
+# send_curl "abcdef112233"
+send_curl '[10 65 118 233 159 255 8 167 167 148 231 241 187 196 24 223 185 252 15 181 175 221 208 133 248 85 23 30 80 181 239 210 10 83 1 33 216 85 212 53 79 33 109 104 34 197 253 151 200 147 14 2 31 141 209 102 122 228 56 113 177 72 183 65 82 184 0 18 42 8 137 171 216 139 160 147 35 16 178 169 158 133 255 44 26 6 97 98 99 49 50 51 50 13 116 101 115 116 105 110 103 45 97 100 97 109 98 56 2 64 1 24 1]'

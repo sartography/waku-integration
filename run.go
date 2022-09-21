@@ -81,14 +81,22 @@ package main
 // }
 
 import (
-	"fmt"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"fmt"
 	"math/big"
 	"strconv"
 
 	"github.com/status-im/status-go/eth-node/crypto"
 	"github.com/status-im/status-go/eth-node/types"
+	"github.com/status-im/status-go/protocol/protobuf"
+
+	// "google.golang.org/protobuf/proto"
+	"github.com/golang/protobuf/proto"
+	// "github.com/status-im/status-go/protocol/encryption"
+	// "github.com/status-im/status-go/protocol/protobuf"
+	// "github.com/status-im/status-go/protocol/sqlite"
+	v1protocol "github.com/status-im/status-go/protocol/v1"
 )
 
 const discoveryTopic = "contact-discovery"
@@ -107,7 +115,33 @@ func main() {
 	}
 	fmt.Printf("PUKEY: '%v'\n", publicKey.X)
 	partitionTopic := PartitionedTopic(publicKey)
-	fmt.Printf("PAR TOPIC: '%v'", partitionTopic)
+	fmt.Printf("PAR TOPIC: '%v'\n", partitionTopic)
+
+	testMessage := protobuf.ChatMessage{
+		Text:        "abc123",
+		ChatId:      "testing-adamb",
+		ContentType: protobuf.ChatMessage_TEXT_PLAIN,
+		MessageType: protobuf.MessageType_PUBLIC_GROUP,
+		Clock:       154593077368201,
+		Timestamp:   1545930773682,
+	}
+	fmt.Printf("testMessage: '%v'\n", testMessage)
+
+	encodedPayload, err := proto.Marshal(&testMessage)
+	if err != nil {
+		panic(err)
+	}
+
+	authorKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+
+	wrappedPayload, err := v1protocol.WrapMessageV1(encodedPayload, protobuf.ApplicationMetadataMessage_CHAT_MESSAGE, authorKey)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("wrappedPayload: '%v'\n", wrappedPayload)
 }
 
 // ToTopic converts a string to a whisper topic.
