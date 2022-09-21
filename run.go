@@ -1,5 +1,31 @@
 package main
 
+// we have a waku node running via this command and listening for RPC requests on port 8545:
+// ./build/waku \
+//   --dns-discovery=true \
+//   --dns-discovery-url=enrtree://AOGECG2SPND25EEFMAJ5WF3KSGJNSGV356DSTL2YVLLZWIV6SAYBM@test.nodes.status.im \
+//   --discv5-discovery=true \
+//   --rpc \
+//   --rpc-admin
+
+// the goal is to send a request like the following to send a message to a user on the status mobile app:
+
+// curl -v -f -s -X POST -H Content-type:application/json --data '{
+//     "id": 1,
+//     "jsonrpc": "2.0",
+//     "method": "post_waku_v2_relay_v1_message",
+//     "params": ["", {
+//         "payload": "abcdef112233",
+//         "contentTopic": "contentTopicGoesHere",
+//         "timestamp": 1257894000000000000,
+//         "version": 1
+//     }]
+//     }' http://localhost:8545
+
+// the following script generates an appropriate contentTopic for a known user's public key.
+// We know we need to generate a protobuf ChatMessage and wrap it in a protobuf ApplicationMetadataMessage.
+// We're wondering if there is prexisting golang code that does this part that we could borrow to easily get this working.
+
 // import (
 // 	"fmt"
 // 	"math/big"
