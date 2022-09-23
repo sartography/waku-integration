@@ -1,26 +1,29 @@
 package main
 
 // we have a waku node running via this command and listening for RPC requests on port 8545:
-// ./build/waku \
-//   --dns-discovery=true \
-//   --dns-discovery-url=enrtree://AOGECG2SPND25EEFMAJ5WF3KSGJNSGV356DSTL2YVLLZWIV6SAYBM@test.nodes.status.im \
-//   --discv5-discovery=true \
-//   --rpc \
-//   --rpc-admin
-
+/*
+./build/waku \
+  --dns-discovery=true \
+  --dns-discovery-url=enrtree://AOGECG2SPND25EEFMAJ5WF3KSGJNSGV356DSTL2YVLLZWIV6SAYBM@prod.nodes.status.im \
+  --discv5-discovery=true \
+  --rpc \
+  --rpc-admin
+*/
 // the goal is to send a request like the following to send a message to a user on the status mobile app:
 
-// curl -v -f -s -X POST -H Content-type:application/json --data '{
-//     "id": 1,
-//     "jsonrpc": "2.0",
-//     "method": "post_waku_v2_relay_v1_message",
-//     "params": ["", {
-//         "payload": "abcdef112233",
-//         "contentTopic": "contentTopicGoesHere",
-//         "timestamp": 1257894000000000000,
-//         "version": 1
-//     }]
-//     }' http://localhost:8545
+/*
+curl -v -f -s -X POST -H Content-type:application/json --data '{
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "post_waku_v2_relay_v1_message",
+    "params": ["", {
+        "payload": "abcdef112233",
+        "contentTopic": "contentTopicGoesHere",
+        "timestamp": 1257894000000000000,
+        "version": 1
+    }]
+    }' http://localhost:8545
+*/
 
 // the following script generates an appropriate contentTopic for a known user's public key.
 // We know we need to generate a protobuf ChatMessage and wrap it in a protobuf ApplicationMetadataMessage.
@@ -82,20 +85,22 @@ package main
 
 import (
 	"crypto/ecdsa"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math/big"
 	"strconv"
+	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/status-im/go-waku/waku/v2/node"
 	"github.com/status-im/status-go/eth-node/crypto"
 	"github.com/status-im/status-go/eth-node/types"
 	"github.com/status-im/status-go/protocol/protobuf"
+	"golang.org/x/crypto/pbkdf2"
 
-	// "google.golang.org/protobuf/proto"
 	"github.com/golang/protobuf/proto"
-	// "github.com/status-im/status-go/protocol/encryption"
-	// "github.com/status-im/status-go/protocol/protobuf"
-	// "github.com/status-im/status-go/protocol/sqlite"
+
 	v1protocol "github.com/status-im/status-go/protocol/v1"
 )
 
@@ -107,27 +112,30 @@ var (
 )
 
 func main() {
-	jasonKey := "04aa379d2661d6358f41b47a866f2674ca987e3398e93318ec08ea58b9f7035df491131a62ad3a469af609df9af58bcad698dac7f01e160130b7e187c60b824973"
+	rramosKey := "04ca2cf0599ace5def8543cb53e7fbd1d54ba65ab89f8794a08f9bf0406a7895c8074f380adf47a6692df0217cc81d2c680c6f50ef4149c84901f95c22a76bfa96"
+	// jasonKey := "04aa379d2661d6358f41b47a866f2674ca987e3398e93318ec08ea58b9f7035df491131a62ad3a469af609df9af58bcad698dac7f01e160130b7e187c60b824973"
 	// kbKey := "04e3ec4eb8a7c6b78f30b25ee2b2c34040ede4b9e51627ac82051bb37c4c3de21da0709bced20619566c545ff7b69fd58b8840cd48a686fffe68608f879bf9155b"
 	// mikeKey := "04622248490465b1d0cd5ec48375484682bec9a16f550ffd461cb803d4a8970a88cf8f99390a8e2216012602a9f8a0882ae86d773667d2802939150f3a14f1963a"
-	publicKeyString := jasonKey
+
+	publicKeyString := rramosKey
 	publicKey, err := StrToPublicKey(publicKeyString)
 	if err != nil {
 		panic(err)
 	}
-	// fmt.Printf("PUKEY: '%v'\n", publicKey.X)
-	partitionTopic := PartitionedTopic(publicKey)
-	// fmt.Printf("PAR TOPIC: '%v'\n", partitionTopic)
+	_ = publicKey
+
+	topic := "testrramos" // PartitionedTopic(publicKey)
+	topicBytes := ToTopic(topic)
+	contentTopic := ContentTopic(topicBytes)
 
 	testMessage := protobuf.ChatMessage{
 		Text:        "abc123",
-		ChatId:      fmt.Sprintf("0x%v", publicKeyString),
+		ChatId:      topic,
 		ContentType: protobuf.ChatMessage_TEXT_PLAIN,
-		MessageType: protobuf.MessageType_ONE_TO_ONE,
-		Clock:       154593077368201,
-		Timestamp:   1545930773682,
+		MessageType: protobuf.MessageType_PUBLIC_GROUP,
+		Clock:       uint64(time.Now().Unix()),
+		Timestamp:   uint64(time.Now().Unix()),
 	}
-	// fmt.Printf("testMessage: '%v'\n", testMessage)
 
 	encodedPayload, err := proto.Marshal(&testMessage)
 	if err != nil {
@@ -143,11 +151,49 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// fmt.Printf("wrappedPayload: '%v'\n", wrappedPayload)
 
-	hexEncoded := hex.EncodeToString(wrappedPayload)
-	// fmt.Printf("hexEncoded: '%v'\n", hexEncoded)
-	fmt.Printf("%v:%v", partitionTopic, hexEncoded)
+	// The messages need to be encrypted before they're broadcasted
+	payload := node.Payload{}
+	payload.Data = wrappedPayload
+	payload.Key = &node.KeyInfo{
+		PrivKey: authorKey, // Key used to sign the message
+
+		// For sending to a public channel
+		Kind:   node.Symmetric,
+		SymKey: generateSymKey(topic),
+
+		// For 1:1
+		// Kind: node.Asymmetric,
+		// PubKey: publicKey
+	}
+	payloadBytes, err := payload.Encode(1)
+	if err != nil {
+		panic(err)
+	}
+
+	hexEncoded := hex.EncodeToString(payloadBytes)
+
+	fmt.Printf(`
+	
+	curl -v --fail-with-body -s -X POST -H Content-type:application/json --data '{
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "post_waku_v2_relay_v1_message",
+    "params": ["", {
+        "payload": "%s",
+        "contentTopic": "%s",
+        "version": 1,
+		"timestamp": %d
+    }]
+    }' http://localhost:8545
+	
+	`, hexEncoded, contentTopic, time.Now().UnixNano())
+
+}
+
+func ContentTopic(t []byte) string {
+	enc := hexutil.Encode(t)
+	return "/waku/1/" + enc + "/rfc26"
 }
 
 // ToTopic converts a string to a whisper topic.
@@ -189,4 +235,10 @@ func NegotiatedTopic(publicKey *ecdsa.PublicKey) string {
 
 func DiscoveryTopic() string {
 	return discoveryTopic
+}
+
+func generateSymKey(password string) []byte {
+	// AesKeyLength represents the length (in bytes) of an private key
+	AESKeyLength := 256 / 8
+	return pbkdf2.Key([]byte(password), nil, 65356, AESKeyLength, sha256.New)
 }
