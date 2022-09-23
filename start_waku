@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+function error_handler() {
+  >&2 echo "Exited with BAD EXIT CODE '${2}' in ${0} script at line: ${1}."
+  exit "$2"
+}
+trap 'error_handler ${LINENO} $?' ERR
+set -o errtrace -o errexit -o nounset -o pipefail
+
+# HELP:
+
+cd ~/projects/github/go-waku
+
+if [[ ! -f "./build/waku" ]]; then
+  make
+fi
+
+# --dns-discovery-url=enrtree://ANTL4SLG2COUILKAPE7EF2BYNL2SHSHVCHLRD5J7ZJLN5R3PRJD2Y@prod.waku.nodes.status.im \
+# --dns-discovery-url=enrtree://AKA3AM6LPBYEUDMVNU3BSVQJ5AD45Y7YPOHJLEF6W26QOE4VTUDPE@all.mainnet.ethdisco.net \
+
+./build/waku \
+  --dns-discovery=true \
+  --dns-discovery-url=enrtree://AOGECG2SPND25EEFMAJ5WF3KSGJNSGV356DSTL2YVLLZWIV6SAYBM@prod.nodes.status.im \
+  --discv5-discovery=true \
+  --rpc \
+  --rpc-admin
+
+# ./build/waku \
+#   --staticnode=/dns4/node-01.ac-cn-hongkong-c.status.prod.statusim.net/tcp/30303/p2p/16Uiu2HAkvEZgh3KLwhLwXg95e5ojM8XykJ4Kxi2T7hk22rnA7pJC \
+#   --staticnode=/dns4/node-01.do-ams3.status.prod.statusim.net/tcp/30303/p2p/16Uiu2HAm6HZZr7aToTvEBPpiys4UxajCTU97zj5v7RNR2gbniy1D \
+#   --staticnode=/dns4/node-01.gc-us-central1-a.status.prod.statusim.net/tcp/30303/p2p/16Uiu2HAkwBp8T6G77kQXSNMnxgaMky1JeyML5yqoTHRM8dbeCBNb \
+#   --staticnode=/dns4/node-02.ac-cn-hongkong-c.status.prod.statusim.net/tcp/30303/p2p/16Uiu2HAmFy8BrJhCEmCYrUfBdSNkrPw6VHExtv4rRp1DSBnCPgx8 \
+#   --staticnode=/dns4/node-02.do-ams3.status.prod.statusim.net/tcp/30303/p2p/16Uiu2HAmSve7tR5YZugpskMv2dmJAsMUKmfWYEKRXNUxRaTCnsXV \
+#   --staticnode=/dns4/node-02.gc-us-central1-a.status.prod.statusim.net/tcp/30303/p2p/16Uiu2HAmDQugwDHM3YeUp86iGjrUvbdw3JPRgikC7YoGBsT2ymMg \
+#   --rpc \
+#   --rpc-admin
+
+
+# curl -d '{"jsonrpc":"2.0","id":"id","method":"get_waku_v2_debug_v1_info", "params":[]}' --header "Content-Type: application/json" http://localhost:8545 | jq .
+
+# curl -v -f -s -X POST -H Content-type:application/json --data '{
+#     "id": 1,
+#     "jsonrpc": "2.0",
+#     "method": "post_waku_v2_relay_v1_message",
+#     "params": ["", {
+#         "payload": "abcdef112233",
+#         "contentTopic": "contentTopicGoesHere",
+#         "timestamp": 1257894000000000000,
+#         "version": 1
+#     }]
+#     }' http://localhost:8545
