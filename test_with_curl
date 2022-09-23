@@ -33,6 +33,7 @@ function send_curl() {
 
 go build waku/client
 content=$(./client)
-partition_topic=$(awk -F ':' '{print $1}' <<<"$content")
-payload_string=$(awk -F ':' '{print $2}' <<<"$content")
-send_curl "$partition_topic" "$payload_string"
+# partition_topic=$(awk -F ':' '{print $1}' <<<"$content")
+# payload_string=$(awk -F ':' '{print $2}' <<<"$content")
+# send_curl "$partition_topic" "$payload_string"
+eval $content

@@ -129,7 +129,7 @@ func main() {
 	contentTopic := ContentTopic(topicBytes)
 
 	testMessage := protobuf.ChatMessage{
-		Text:        "abc123",
+		Text:        "THIS BE IT1",
 		ChatId:      topic,
 		ContentType: protobuf.ChatMessage_TEXT_PLAIN,
 		MessageType: protobuf.MessageType_PUBLIC_GROUP,
