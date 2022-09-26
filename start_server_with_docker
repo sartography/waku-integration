@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+function error_handler() {
+  >&2 echo "Exited with BAD EXIT CODE '${2}' in ${0} script at line: ${1}."
+  exit "$2"
+}
+trap 'error_handler ${LINENO} $?' ERR
+set -o errtrace -o errexit -o nounset -o pipefail
+
+tag_name="local-build-$(date +%s)"
+image_name="waku-integration"
+container_name="$image_name"
+image_with_tag="${image_name}:${tag_name}"
+
+if [[ -n "$(docker ps -a -q -f name=${container_name})" ]] ; then
+  docker stop ${container_name}
+  docker rm ${container_name}
+fi
+
+docker build -t "$image_with_tag" .
+docker run -d --net=host -p 7005:7005 --name "$container_name" "$image_with_tag"

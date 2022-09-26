@@ -1,0 +1,10 @@
+README.md
+Dockerfile
+.*ignore
+LICENSE*
+tests
+examples
+*.db
+
+/go-waku
+/client

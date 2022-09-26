@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+function error_handler() {
+  >&2 echo "Exited with BAD EXIT CODE '${2}' in ${0} script at line: ${1}."
+  exit "$2"
+}
+trap 'error_handler ${LINENO} $?' ERR
+set -o errtrace -o errexit -o nounset -o pipefail
+
+if [[ ! -d 'go-waku' ]]; then
+  git clone https://github.com/status-im/go-waku
+fi
+
+if [[ -n "$(docker ps -a -q -f name=go-waku-node)" ]] ; then
+  docker stop go-waku-node
+  docker rm go-waku-node
+fi
+
+tag_name="local-build-$(date +%s)"
+
+cd go-waku
+
+docker build -t "go-waku:${tag_name}" .
+
+docker run -d --name go-waku-node -p8545:8545 --net=host "go-waku:${tag_name}" \
+  --dns-discovery=true \
+  --dns-discovery-url=enrtree://AOGECG2SPND25EEFMAJ5WF3KSGJNSGV356DSTL2YVLLZWIV6SAYBM@prod.nodes.status.im \
+  --discv5-discovery=true \
+  --rpc \
+  --rpc-admin

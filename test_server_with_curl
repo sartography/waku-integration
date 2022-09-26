@@ -14,7 +14,7 @@ mikeKey="04622248490465b1d0cd5ec48375484682bec9a16f550ffd461cb803d4a8970a88cf8f9
 publicKey=$rramosKey
 
 if [[ "${1-}" == "public" ]]; then
-  curl localhost:7005/sendMessage -X POST --data '{"message": "new_message2", "recipient": "testrramos", "message_type": "public"}'
+  curl localhost:7005/sendMessage -X POST --data '{"message": "new_message7", "recipient": "testrramos", "message_type": "public"}'
 else
   curl -v localhost:7005/sendMessage -X POST --data '{"message": "new_message1", "recipient": "'$publicKey'", "message_type": "one_to_one"}'
 fi

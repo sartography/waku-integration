@@ -142,6 +142,7 @@ func sendMessage(c *gin.Context) {
 	fmt.Println("response Headers:", resp.Header)
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println("response Body:", string(body))
+	c.String(200, string(body))
 }
 
 func ContentTopic(t []byte) string {
