@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/gin-gonic/gin"
 	"github.com/status-im/go-waku/waku/v2/node"
 	"github.com/status-im/status-go/eth-node/crypto"
 	"github.com/status-im/status-go/eth-node/types"
@@ -32,27 +33,49 @@ var (
 )
 
 func main() {
-	rramosKey := "04ca2cf0599ace5def8543cb53e7fbd1d54ba65ab89f8794a08f9bf0406a7895c8074f380adf47a6692df0217cc81d2c680c6f50ef4149c84901f95c22a76bfa96"
-	// jasonKey := "04aa379d2661d6358f41b47a866f2674ca987e3398e93318ec08ea58b9f7035df491131a62ad3a469af609df9af58bcad698dac7f01e160130b7e187c60b824973"
-	// kbKey := "04e3ec4eb8a7c6b78f30b25ee2b2c34040ede4b9e51627ac82051bb37c4c3de21da0709bced20619566c545ff7b69fd58b8840cd48a686fffe68608f879bf9155b"
-	// mikeKey := "04622248490465b1d0cd5ec48375484682bec9a16f550ffd461cb803d4a8970a88cf8f99390a8e2216012602a9f8a0882ae86d773667d2802939150f3a14f1963a"
+	router := gin.Default()
+	router.POST("/sendMessage", sendMessage)
 
-	publicKeyString := rramosKey
-	publicKey, err := StrToPublicKey(publicKeyString)
-	if err != nil {
-		panic(err)
+	router.Run("localhost:7005")
+}
+
+// album represents data about a record album.
+type sendMessageRequest struct {
+	Message     string `json:"message"`
+	Recipient   string `json:"recipient"`
+	MessageType string `json:"message_type"`
+}
+
+func sendMessage(c *gin.Context) {
+	var messageBody sendMessageRequest
+	if err := c.BindJSON(&messageBody); err != nil {
+		return
 	}
-	_ = publicKey
 
-	topic := "testrramos" // PartitionedTopic(publicKey)
+	var topic string
+	var messageType protobuf.MessageType
+	var publicKey ecdsa.PublicKey
+	if messageBody.MessageType == "public" {
+		topic = messageBody.Recipient
+		messageType = protobuf.MessageType_PUBLIC_GROUP
+	} else if messageBody.MessageType == "one_to_one" {
+		publicKey, err := StrToPublicKey(messageBody.Recipient)
+		if err != nil {
+			panic(err)
+		}
+		topic = PartitionedTopic(publicKey)
+		messageType = protobuf.MessageType_ONE_TO_ONE
+	} else {
+		panic(fmt.Sprintf("Invalid Message Type: '%v'", messageBody.MessageType))
+	}
 	topicBytes := ToTopic(topic)
 	contentTopic := ContentTopic(topicBytes)
 
 	testMessage := protobuf.ChatMessage{
-		Text:        "hey yo 3",
+		Text:        messageBody.Message,
 		ChatId:      topic,
 		ContentType: protobuf.ChatMessage_TEXT_PLAIN,
-		MessageType: protobuf.MessageType_PUBLIC_GROUP,
+		MessageType: messageType,
 		Clock:       uint64(time.Now().Unix()),
 		Timestamp:   uint64(time.Now().Unix()),
 	}
@@ -71,6 +94,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Printf("publicKey.X: '%v'\n", publicKey.X)
+	fmt.Printf("publicKey.Y: '%v'\n", publicKey.Y)
+	fmt.Printf("publicKey.Y.Sign(): '%v'\n", publicKey.Y.Sign())
+	fmt.Printf("publicKey.X.Sign(): '%v'\n", publicKey.X.Sign())
 
 	// The messages need to be encrypted before they're broadcasted
 	payload := node.Payload{}
@@ -78,13 +105,13 @@ func main() {
 	payload.Key = &node.KeyInfo{
 		PrivKey: authorKey, // Key used to sign the message
 
-		// For sending to a public channel
-		Kind:   node.Symmetric,
-		SymKey: generateSymKey(topic),
+		// // For sending to a public channel
+		// Kind:   node.Symmetric,
+		// SymKey: generateSymKey(topic),
 
 		// For 1:1
-		// Kind: node.Asymmetric,
-		// PubKey: publicKey
+		Kind:   node.Asymmetric,
+		PubKey: publicKey,
 	}
 	payloadBytes, err := payload.Encode(1)
 	if err != nil {
