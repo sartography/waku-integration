@@ -94,25 +94,31 @@ func sendMessage(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("publicKey.X: '%v'\n", publicKey.X)
-	fmt.Printf("publicKey.Y: '%v'\n", publicKey.Y)
-	fmt.Printf("publicKey.Y.Sign(): '%v'\n", publicKey.Y.Sign())
-	fmt.Printf("publicKey.X.Sign(): '%v'\n", publicKey.X.Sign())
+	// fmt.Printf("publicKey.X: '%v'\n", publicKey.X)
+	// fmt.Printf("publicKey.Y: '%v'\n", publicKey.Y)
+	// fmt.Printf("publicKey.Y.Sign(): '%v'\n", publicKey.Y.Sign())
+	// fmt.Printf("publicKey.X.Sign(): '%v'\n", publicKey.X.Sign())
 
 	// The messages need to be encrypted before they're broadcasted
 	payload := node.Payload{}
 	payload.Data = wrappedPayload
-	payload.Key = &node.KeyInfo{
-		PrivKey: authorKey, // Key used to sign the message
 
-		// // For sending to a public channel
-		// Kind:   node.Symmetric,
-		// SymKey: generateSymKey(topic),
-
-		// For 1:1
-		Kind:   node.Asymmetric,
-		PubKey: publicKey,
+	var keyInfo node.KeyInfo
+	if messageBody.MessageType == "public" {
+		keyInfo = node.KeyInfo{
+			PrivKey: authorKey, // Key used to sign the message
+			Kind:    node.Symmetric,
+			SymKey:  generateSymKey(topic),
+		}
+	} else if messageBody.MessageType == "one_to_one" {
+		keyInfo = node.KeyInfo{
+			PrivKey: authorKey, // Key used to sign the message
+			Kind:    node.Asymmetric,
+			PubKey:  publicKey,
+		}
 	}
+
+	payload.Key = &keyInfo
 	payloadBytes, err := payload.Encode(1)
 	if err != nil {
 		panic(err)
