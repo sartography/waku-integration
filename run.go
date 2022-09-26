@@ -1,94 +1,14 @@
 package main
 
-// we have a waku node running via this command and listening for RPC requests on port 8545:
-/*
-./build/waku \
-  --dns-discovery=true \
-  --dns-discovery-url=enrtree://AOGECG2SPND25EEFMAJ5WF3KSGJNSGV356DSTL2YVLLZWIV6SAYBM@prod.nodes.status.im \
-  --discv5-discovery=true \
-  --rpc \
-  --rpc-admin
-*/
-// the goal is to send a request like the following to send a message to a user on the status mobile app:
-
-/*
-curl -v -f -s -X POST -H Content-type:application/json --data '{
-    "id": 1,
-    "jsonrpc": "2.0",
-    "method": "post_waku_v2_relay_v1_message",
-    "params": ["", {
-        "payload": "abcdef112233",
-        "contentTopic": "contentTopicGoesHere",
-        "timestamp": 1257894000000000000,
-        "version": 1
-    }]
-    }' http://localhost:8545
-*/
-
-// the following script generates an appropriate contentTopic for a known user's public key.
-// We know we need to generate a protobuf ChatMessage and wrap it in a protobuf ApplicationMetadataMessage.
-// We're wondering if there is prexisting golang code that does this part that we could borrow to easily get this working.
-
-// import (
-// 	"fmt"
-// 	"math/big"
-// 	"strconv"
-// 	"crypto/ecdsa"
-// 	"github.com/status-im/status-go/eth-node/crypto"
-// 	"github.com/status-im/status-go/eth-node/types"
-//
-// )
-//
-// func main() {
-// 		getPartitionTopic()
-// }
-//
-// func getPartitionTopic() {
-// 	// var publicKey = publicKey.X
-// 	var publicKey *big.Int = big.NewInt(12345)
-// 	var partitionsNum *big.Int = big.NewInt(5000)
-// 	var partition *big.Int = big.NewInt(0).Mod(publicKey, partitionsNum)
-//
-// 	var partitionTopic = "contact-discovery-" + strconv.FormatInt(partition.Int64(), 10)
-//
-// 	// var hash []byte = keccak256.New() // partitionTopic)
-// 	// var hash keccak256 = keccak256.New() // partitionTopic)
-//   partitionTopicByteArray := []byte(partitionTopic)
-//
-// 	var hash = crypto.Keccak256(partitionTopicByteArray)
-// 	fmt.Printf("theHash: '%v'\n", hash)
-// 	fmt.Printf("partTopick: '%v'\n", partitionTopic)
-// 	var topic = hash[:types.TopicLength]
-// 	fmt.Printf("lenght: '%v'\n", types.TopicLength)
-//
-// 	// var topicLen int = 4
-//   //
-// 	// if len(hash) < topicLen {
-// 	// 	topicLen = len(hash)
-// 	// }
-//   //
-// 	// var topic [4]byte
-// 	// for i := 0; i < topicLen; i++ {
-// 	// 	topic[i] = hash[i]
-// 	// }
-// 	fmt.Printf("topicBytes: '%v'\n", topic[:])
-// 	fmt.Printf("topic: '%v'\n", string(topic[:]))
-// }
-//
-// func StrToPublicKey(str string) (*ecdsa.PublicKey, error) {
-// 	publicKeyBytes, err := hex.DecodeString(str)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return crypto.UnmarshalPubkey(publicKeyBytes)
-// }
-
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -129,7 +49,7 @@ func main() {
 	contentTopic := ContentTopic(topicBytes)
 
 	testMessage := protobuf.ChatMessage{
-		Text:        "hey yo 2",
+		Text:        "hey yo 3",
 		ChatId:      topic,
 		ContentType: protobuf.ChatMessage_TEXT_PLAIN,
 		MessageType: protobuf.MessageType_PUBLIC_GROUP,
@@ -173,22 +93,22 @@ func main() {
 
 	hexEncoded := hex.EncodeToString(payloadBytes)
 
-	fmt.Printf(`
-	
-	curl -v --fail-with-body -s -X POST -H Content-type:application/json --data '{
-    "id": 1,
-    "jsonrpc": "2.0",
-    "method": "post_waku_v2_relay_v1_message",
-    "params": ["", {
-        "payload": "%s",
-        "contentTopic": "%s",
-        "version": 1,
-		"timestamp": %d
-    }]
-    }' http://localhost:8545
-	
-	`, hexEncoded, contentTopic, time.Now().UnixNano())
+	url := "http://localhost:8545"
+	jsonStr := []byte(fmt.Sprintf(`{ "id": 1, "jsonrpc": "2.0", "method": "post_waku_v2_relay_v1_message", "params": ["", { "payload": "%s", "contentTopic": "%s", "version": 1, "timestamp": %d }] }`, hexEncoded, contentTopic, time.Now().UnixNano()))
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-type", "application/json")
 
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println("response Body:", string(body))
 }
 
 func ContentTopic(t []byte) string {
