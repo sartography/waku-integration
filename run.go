@@ -36,7 +36,7 @@ func main() {
 	router := gin.Default()
 	router.POST("/sendMessage", sendMessage)
 
-	router.Run("localhost:7005")
+	router.Run(":7005")
 }
 
 // album represents data about a record album.
