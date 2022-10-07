@@ -1,0 +1,9 @@
+might need to receive, but mostly focusing on sending 1:1
+ * receiving requires a handler
+one topic for 1:1 if you don't need to receive
+might need mapping of emails or user ids to status keys (status key is the public key, right?)
+status-go is maintained by status-im, and used by two internal teams.
+ * it's a bit bloated, but it has the right API
+community is a different type of chat context, like moderated channels/topics
+ * this is to solve the problem of spam and garbage in public chats
+ * implementing this would be a significant lift
