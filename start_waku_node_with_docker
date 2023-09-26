@@ -24,7 +24,7 @@ docker build -t "go-waku:${tag_name}" .
 
 docker run -d --name go-waku-node -p8545:8545 --net=host "go-waku:${tag_name}" \
   --dns-discovery=true \
-  --dns-discovery-url=enrtree://AOGECG2SPND25EEFMAJ5WF3KSGJNSGV356DSTL2YVLLZWIV6SAYBM@prod.nodes.status.im \
+  --dns-discovery-url=enrtree://AL65EKLJAUXKKPG43HVTML5EFFWEZ7L4LOKTLZCLJASG4DSESQZEC@prod.status.nodes.status.im \
   --discv5-discovery=true \
   --rpc \
   --rpc-admin
